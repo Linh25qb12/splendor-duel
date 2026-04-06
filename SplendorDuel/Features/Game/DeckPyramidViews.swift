@@ -47,8 +47,7 @@ struct DeckView: View {
     let onReserve: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            // --- TOP HALF: Card Back Design ---
+        HStack(spacing: 0) {
             ZStack {
                 PastelPalette.neutralSoft.opacity(0.7)
                 VStack(spacing: 8) {
@@ -64,24 +63,25 @@ struct DeckView: View {
             .frame(width: CardChrome.width, height: CardChrome.artHeight)
             .background(PastelPalette.cream)
 
-            // --- BOTTOM HALF: Reserve Button ---
             Button(action: onReserve) {
-                Text(isEmpty ? "Empty" : "Res Deck")
+                Text(isEmpty ? "—" : "Res")
                     .font(.caption2).bold()
+                    .rotationEffect(.degrees(90))
+                    .fixedSize()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(canReserve && !isEmpty ? PastelPalette.reserveEnabled : PastelPalette.reserveDisabled)
                     .foregroundStyle(PastelPalette.buttonLabelOnPastel)
             }
             .disabled(!canReserve || isEmpty)
-            .frame(height: CardChrome.actionRowHeight)
+            .frame(width: CardChrome.actionColumnWidth)
         }
-        .frame(width: CardChrome.width, height: CardChrome.totalHeight)
+        .frame(width: CardChrome.totalWidth, height: CardChrome.totalHeight)
         .clipShape(RoundedRectangle(cornerRadius: CardChrome.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: CardChrome.cornerRadius, style: .continuous)
                 .stroke(PastelPalette.cardStroke, lineWidth: 1)
         )
-        .shadow(color: PastelPalette.cardShadow, radius: CardChrome.shadowRadius, x: 0, y: CardChrome.shadowY)
+        .tableLiftCardShadow()
         .opacity(isEmpty ? 0.5 : 1.0)
     }
 }

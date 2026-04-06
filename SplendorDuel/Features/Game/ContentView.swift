@@ -14,18 +14,25 @@ struct ContentView: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                mainGameLayout
-                overlays
-            }
-            // GeometryReader aligns its child to top-leading by default; without this, the ZStack
-            // shrink-wraps to content width and the whole board sits left with empty space on the right.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            // Overlay keeps layout stable (flying ghosts don't participate in ZStack sizing).
-            .overlay {
-                flyingCardLayer(geo: geo)
-                    .allowsHitTesting(false)
+        ZStack {
+            // Full-bleed table art (GeometryReader is safe-area sized; sizing image from geo
+            // leaves the home-indicator strip uncovered).
+            Image("table_background")
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            GeometryReader { geo in
+                ZStack {
+                    mainGameLayout
+                    overlays
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .overlay {
+                    flyingCardLayer(geo: geo)
+                        .allowsHitTesting(false)
+                }
             }
         }
         .environment(flyAnimator)
@@ -87,7 +94,36 @@ struct ContentView: View {
     // MARK: - Body Subviews
 
     private var mainGameLayout: some View {
-        VStack(spacing: 12) {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 20) {
+                dashboardsRow
+                controlsRow
+                cardPyramidSection
+                royalTokenRow
+                statusMessages
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 24)
+            .padding(.vertical, 10)
+        }
+        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .disabled(!viewModel.isMyTurn)
+        .blur(radius: viewModel.winnerName != nil ? 5 : 0)
+    }
+
+    // MARK: - Top: Two dashboards side by side
+
+    private var dashboardsRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            PlayerDashboardView(
+                player: viewModel.player1,
+                isCurrentTurn: viewModel.isPlayer1Turn,
+                canAffordCard: { viewModel.canAfford(card: $0) },
+                onPurchaseReservedCard: { viewModel.purchaseCard($0) }
+            )
+            .frame(maxWidth: .infinity)
+
             PlayerDashboardView(
                 player: viewModel.player2,
                 isCurrentTurn: !viewModel.isPlayer1Turn,
@@ -95,177 +131,177 @@ struct ContentView: View {
                 onPurchaseReservedCard: { viewModel.purchaseCard($0) },
                 isTopPlayer: true
             )
-
-            middleRow
-            controlsRow
-            actionsRow
-
-            PlayerDashboardView(
-                player: viewModel.player1,
-                isCurrentTurn: viewModel.isPlayer1Turn,
-                canAffordCard: { viewModel.canAfford(card: $0) },
-                onPurchaseReservedCard: { viewModel.purchaseCard($0) }
-            )
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .disabled(!viewModel.isMyTurn)
-        .blur(radius: viewModel.winnerName != nil ? 5 : 0)
     }
 
-    private var middleRow: some View {
-        HStack(alignment: .center, spacing: 15) {
-            Spacer(minLength: 0)
+    // MARK: - Card Pyramid (full width, auto-scaled to fit)
+
+    private var cardPyramidSection: some View {
+        let maxItems: CGFloat = 6
+        let spacing: CGFloat = 8
+        let naturalW = maxItems * CardChrome.totalWidth + (maxItems - 1) * spacing
+        let naturalH = 3 * CardChrome.totalHeight + 2 * 5
+
+        return GeometryReader { geo in
+            let scale = min(1.0, geo.size.width / naturalW)
             CardPyramidView(viewModel: viewModel)
-                .scaleEffect(0.82)
-                .frame(width: 550, height: 340)
+                .scaleEffect(scale, anchor: .topLeading)
+                .frame(width: naturalW, height: naturalH, alignment: .topLeading)
+        }
+        .aspectRatio(naturalW / naturalH, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+    }
 
-            VStack(spacing: 10) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(viewModel.availableRoyals) { royal in
-                            let thumbW: CGFloat = 72
-                            let thumbH = thumbW * CardChrome.totalHeight / CardChrome.width
-                            ZStack(alignment: .bottom) {
-                                Image(royal.catalogImageName)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: thumbW, height: thumbH)
-                                    .clipped()
-                                VStack(spacing: 2) {
-                                    if royal.ability != .none {
-                                        Label(royalAbilityText(royal.ability), systemImage: royalAbilityIcon(royal.ability))
-                                            .font(.system(size: 8, weight: .semibold))
-                                    }
-                                    Text("\(royal.prestigePoints)")
-                                        .font(.system(size: 12, weight: .bold))
-                                }
-                                .foregroundStyle(.white)
-                                .shadow(color: .black.opacity(0.85), radius: 1, x: 0, y: 0)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 3)
-                                .background(PastelPalette.chipDark.opacity(0.95), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                                .padding(.bottom, 3)
-                            }
-                            .frame(width: thumbW, height: thumbH)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(PastelPalette.royalStroke, lineWidth: 2)
-                            )
-                            .shadow(color: PastelPalette.cardShadow, radius: 4, x: 0, y: 2)
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
-                .frame(maxWidth: .infinity)
+    // MARK: - Token board (left) + Royal grid 2x2 (right)
 
-                BoardView(board: viewModel.board, selectedPositions: viewModel.selectedPositions) { r, c in
-                    viewModel.handleTokenTap(row: r, col: c)
-                }
+    private var royalTokenRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            BoardView(board: viewModel.board, selectedPositions: viewModel.selectedPositions) { r, c in
+                viewModel.handleTokenTap(row: r, col: c)
+            }
 
-                if viewModel.isTakingMatchingToken, let color = viewModel.matchingTokenColor {
-                    Text("Ability: Tap a \(color.rawValue.capitalized) token!")
-                        .font(.subheadline).bold()
-                        .foregroundColor(color == .white ? PastelPalette.textPrimary : PastelPalette.textOnDark)
-                        .padding(8)
-                        .frame(maxWidth: .infinity)
-                        .background(highlightColor(for: color))
-                        .cornerRadius(8)
-                }
-                if viewModel.isSelectingGoldToken {
-                    Text("Tap a Gold token to finish!")
-                        .font(.headline)
-                        .foregroundColor(PastelPalette.textOnDark)
-                        .padding(8)
-                        .frame(maxWidth: .infinity)
-                        .background(PastelPalette.warning)
-                        .cornerRadius(10)
-                        .padding(.horizontal)
+            let columns = [
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8)
+            ]
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(viewModel.availableRoyals) { royal in
+                    royalThumb(royal)
                 }
             }
-            .scaleEffect(0.82)
-            .frame(width: 230, height: 340)
-            Spacer(minLength: 0)
+            .frame(maxWidth: 250)
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, 4)
     }
+
+    private func royalThumb(_ royal: RoyalCard) -> some View {
+        let thumbW: CGFloat = 115
+        let thumbH = thumbW * CardChrome.totalHeight / CardChrome.width
+        return ZStack(alignment: .bottom) {
+            Image(royal.catalogImageName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: thumbW, height: thumbH)
+                .clipped()
+            VStack(spacing: 2) {
+                if royal.ability != .none {
+                    Label(royalAbilityText(royal.ability), systemImage: royalAbilityIcon(royal.ability))
+                        .font(.system(size: 9, weight: .semibold))
+                }
+                Text("\(royal.prestigePoints) ")
+                    .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.85), radius: 1, x: 0, y: 0)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 4)
+            .background(PastelPalette.chipDark.opacity(0.95), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .padding(.bottom, 4)
+        }
+        .frame(width: thumbW, height: thumbH)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(PastelPalette.royalStroke, lineWidth: 2)
+        )
+        .tableLiftCardShadow()
+    }
+
+    // MARK: - Status messages (matching token / gold select)
+
+    @ViewBuilder
+    private var statusMessages: some View {
+        if viewModel.isTakingMatchingToken, let color = viewModel.matchingTokenColor {
+            Text("Ability: Tap a \(color.rawValue.capitalized) token!")
+                .font(.subheadline).bold()
+                .foregroundColor(color == .white ? PastelPalette.textPrimary : PastelPalette.textOnDark)
+                .padding(8)
+                .frame(maxWidth: .infinity)
+                .background(highlightColor(for: color))
+                .cornerRadius(8)
+        }
+        if viewModel.isSelectingGoldToken {
+            Text("Tap a Gold token to finish!")
+                .font(.headline)
+                .foregroundColor(PastelPalette.textOnDark)
+                .padding(8)
+                .frame(maxWidth: .infinity)
+                .background(PastelPalette.warning)
+                .cornerRadius(10)
+        }
+    }
+
+    // MARK: - All controls below player dashboards (Rules … Take Tokens)
 
     private var controlsRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 6) {
             Button(action: { viewModel.isShowingRules = true }) {
                 Label("Rules", systemImage: "book.closed.fill")
+                    .labelStyle(.titleAndIcon)
             }
-            .font(.subheadline)
-            .padding(8)
+            .font(.caption2)
+            .padding(.vertical, 6).padding(.horizontal, 6)
             .background(PastelPalette.accentSky.opacity(0.55))
             .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button(action: { viewModel.isShowingHistory = true }) {
                 Label("History", systemImage: "clock.fill")
+                    .labelStyle(.titleAndIcon)
             }
-            .font(.subheadline)
-            .padding(8)
+            .font(.caption2)
+            .padding(.vertical, 6).padding(.horizontal, 6)
             .background(PastelPalette.lavender.opacity(0.5))
             .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-            Spacer()
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button(action: { onReset() }) {
                 Label("Reset", systemImage: "arrow.counterclockwise")
+                    .labelStyle(.titleAndIcon)
             }
-            .font(.subheadline)
+            .font(.caption2)
             .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .padding(8)
+            .padding(.vertical, 6).padding(.horizontal, 6)
             .background(PastelPalette.accentRose.opacity(0.45))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button(action: { withAnimation { viewModel.refillBoard() } }) {
-                Label("Refill Board", systemImage: "scroll.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 16)
-                    .background(PastelPalette.lily.opacity(0.9))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(PastelPalette.cardStroke, lineWidth: 1)
-                    )
+                Label("Refill", systemImage: "arrow.triangle.2.circlepath")
+                    .labelStyle(.titleAndIcon)
             }
+            .font(.caption2)
+            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+            .padding(.vertical, 6).padding(.horizontal, 6)
+            .background(PastelPalette.lily.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .disabled(viewModel.board.tokenBag.isEmpty)
-        }
-        .padding(.horizontal)
-    }
 
-    private var actionsRow: some View {
-        HStack(spacing: 15) {
+            Spacer(minLength: 4)
+
             Button(action: { withAnimation { viewModel.usePrivilege() } }) {
-                Label("Use Privilege", systemImage: "scroll.fill")
-                    .font(.subheadline).bold()
-                    .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(viewModel.canUsePrivilege() ? PastelPalette.accentSage : PastelPalette.buyDisabled)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Text("Privilege")
+                    .font(.caption2).bold()
             }
+            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+            .padding(.vertical, 6).padding(.horizontal, 8)
+            .background(viewModel.canUsePrivilege() ? PastelPalette.accentSage : PastelPalette.buyDisabled)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .disabled(!viewModel.canUsePrivilege())
 
             Button(action: { withAnimation { viewModel.confirmTokenSelection() } }) {
                 Text("Take Tokens")
-                    .font(.subheadline).bold()
-                    .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(viewModel.isSelectionValid() ? PastelPalette.accentSky : PastelPalette.buyDisabled)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .font(.caption2).bold()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
+            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+            .padding(.vertical, 6).padding(.horizontal, 6)
+            .background(viewModel.isSelectionValid() ? PastelPalette.accentSky : PastelPalette.buyDisabled)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .disabled(!viewModel.isSelectionValid())
         }
-        .padding(.horizontal)
     }
 
     private var overlays: some View {

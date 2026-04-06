@@ -9,26 +9,22 @@ struct CardView: View {
     let onPurchase: () -> Void
     let onReserve: () -> Void
 
+    /// Chỉ dùng cho thẻ trong slot Reserved — chỉ hiện nút Buy, không Res.
+    var isReservedSlot: Bool = false
+
     var isPlayer1Turn: Bool = true  // passed from CardPyramidView so fly routes correctly
     @Environment(CardFlyAnimator.self) private var flyAnimator
     @State private var cardFrame: CGRect = .zero
     private let commitSafetyOffset: TimeInterval = 0.06
 
     var body: some View {
-        VStack(spacing: 0) {
+        HStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
                 Image(CardArtRegistry.catalogImageName(for: card))
                     .resizable()
                     .scaledToFill()
                     .frame(width: CardChrome.width, height: CardChrome.artHeight)
                     .clipped()
-
-                LinearGradient(
-                    colors: [.black.opacity(0.08), .clear, .black.opacity(0.38)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(width: CardChrome.width, height: CardChrome.artHeight)
 
                 VStack(alignment: .leading, spacing: 4) {
                     headerRow
@@ -39,70 +35,91 @@ struct CardView: View {
                 .frame(width: CardChrome.width, height: CardChrome.artHeight, alignment: .topLeading)
 
                 if card.ability != .none {
-                    // Fixed trailing rail so rotated ability badge stays aligned across all cards.
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(PastelPalette.chipDark.opacity(0.8))
-                        abilityBadge(for: card.ability)
-                            .rotationEffect(.degrees(90))
-                            .fixedSize()
+                    VStack {
+                        Spacer(minLength: 0)
+                        HStack {
+                            Spacer(minLength: 0)
+                            abilityBadge(for: card.ability)
+                                .padding(.trailing, 5)
+                                .padding(.bottom, 5)
+                        }
                     }
-                    .frame(width: 30, height: CardChrome.artHeight - 12)
-                    .frame(width: CardChrome.width, height: CardChrome.artHeight, alignment: .trailing)
-                    .padding(.trailing, 2)
+                    .frame(width: CardChrome.width, height: CardChrome.artHeight)
                 }
             }
             .frame(width: CardChrome.width, height: CardChrome.artHeight)
             .clipped()
 
-            HStack(spacing: 0) {
-                Button(action: {
-                    let duration = flyAnimator.launch(
-                        card: card,
-                        from: cardFrame,
-                        isBuy: true,
-                        isPlayer1Turn: isPlayer1Turn
-                    )
-                    DispatchQueue.main.asyncAfter(deadline: .now() + duration + commitSafetyOffset) {
-                        onPurchase()
+            Group {
+                if isReservedSlot {
+                    Button(action: {
+                        let duration = flyAnimator.launch(
+                            card: card,
+                            from: cardFrame,
+                            isBuy: true,
+                            isPlayer1Turn: isPlayer1Turn
+                        )
+                        DispatchQueue.main.asyncAfter(deadline: .now() + duration + commitSafetyOffset) {
+                            onPurchase()
+                        }
+                    }) {
+                        Text("Buy")
+                            .font(.caption2).bold()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(canAfford ? PastelPalette.buyEnabled : PastelPalette.buyDisabled)
+                            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
                     }
-                }) {
-                    Text("Buy")
-                        .font(.caption2).bold()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(canAfford ? PastelPalette.buyEnabled : PastelPalette.buyDisabled)
-                        .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-                }
-                .disabled(!canAfford)
+                    .disabled(!canAfford)
+                } else {
+                    VStack(spacing: 0) {
+                        Button(action: {
+                            let duration = flyAnimator.launch(
+                                card: card,
+                                from: cardFrame,
+                                isBuy: true,
+                                isPlayer1Turn: isPlayer1Turn
+                            )
+                            DispatchQueue.main.asyncAfter(deadline: .now() + duration + commitSafetyOffset) {
+                                onPurchase()
+                            }
+                        }) {
+                            Text("Buy")
+                                .font(.caption2).bold()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(canAfford ? PastelPalette.buyEnabled : PastelPalette.buyDisabled)
+                                .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+                        }
+                        .disabled(!canAfford)
 
-                Button(action: {
-                    let duration = flyAnimator.launch(
-                        card: card,
-                        from: cardFrame,
-                        isBuy: false,
-                        isPlayer1Turn: isPlayer1Turn
-                    )
-                    DispatchQueue.main.asyncAfter(deadline: .now() + duration + commitSafetyOffset) {
-                        onReserve()
+                        Button(action: {
+                            let duration = flyAnimator.launch(
+                                card: card,
+                                from: cardFrame,
+                                isBuy: false,
+                                isPlayer1Turn: isPlayer1Turn
+                            )
+                            DispatchQueue.main.asyncAfter(deadline: .now() + duration + commitSafetyOffset) {
+                                onReserve()
+                            }
+                        }) {
+                            Text("Res")
+                                .font(.caption2).bold()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(canReserve ? PastelPalette.reserveEnabled : PastelPalette.reserveDisabled)
+                                .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+                        }
+                        .disabled(!canReserve)
                     }
-                }) {
-                    Text("Res")
-                        .font(.caption2).bold()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(canReserve ? PastelPalette.reserveEnabled : PastelPalette.reserveDisabled)
-                        .foregroundStyle(PastelPalette.buttonLabelOnPastel)
                 }
-                .disabled(!canReserve)
             }
-            .frame(height: CardChrome.actionRowHeight)
+            .frame(width: CardChrome.actionColumnWidth)
         }
-        .frame(width: CardChrome.width, height: CardChrome.totalHeight)
+        .frame(width: CardChrome.totalWidth, height: CardChrome.totalHeight)
         .clipShape(RoundedRectangle(cornerRadius: CardChrome.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: CardChrome.cornerRadius, style: .continuous)
                 .stroke(PastelPalette.cardStroke, lineWidth: 1)
         )
-        .shadow(color: PastelPalette.cardShadow, radius: CardChrome.shadowRadius, x: 0, y: CardChrome.shadowY)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -112,6 +129,7 @@ struct CardView: View {
                     }
             }
         )
+        .tableLiftCardShadow()
     }
 
     private var headerRow: some View {
@@ -133,13 +151,16 @@ struct CardView: View {
                             .frame(width: 13, height: 13)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .stroke(PastelPalette.textOnDark.opacity(0.95), lineWidth: 1)
+                                    .stroke(Color.black, lineWidth: 1.25)
                             )
                     }
                 }
                 .padding(.horizontal, 4)
                 .padding(.vertical, 3)
-                .background(PastelPalette.chipDark, in: Capsule(style: .continuous))
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.white.opacity(0.88))
+                )
             }
         }
     }
@@ -154,14 +175,17 @@ struct CardView: View {
         }
         .padding(.horizontal, 3)
         .padding(.vertical, 2)
-        .background(PastelPalette.chipDark.opacity(0.9), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .background(
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(Color.white.opacity(0.88))
+        )
     }
 
     private func gemCostChip(token: TokenType, amount: Int) -> some View {
         ZStack {
             Circle()
                 .fill(gemColor(for: token))
-                .overlay(Circle().stroke(PastelPalette.textOnDark.opacity(0.9), lineWidth: 1))
+                .overlay(Circle().stroke(Color.black, lineWidth: 1.25))
                 .frame(width: 13, height: 13)
             Text("\(amount)")
                 .font(.system(size: 7.5, weight: .black))
@@ -174,10 +198,13 @@ struct CardView: View {
             Image(systemName: system).font(.system(size: 8, weight: .bold))
             Text(value).font(.system(size: 10, weight: .heavy))
         }
-        .foregroundStyle(PastelPalette.textOnDark)
+        .foregroundStyle(PastelPalette.textPrimary)
         .padding(.horizontal, 5)
         .padding(.vertical, 3)
-        .background(PastelPalette.chipDark, in: Capsule(style: .continuous))
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.88))
+        )
     }
 
     private func gemColor(for type: TokenType) -> Color {
@@ -222,7 +249,10 @@ struct CardView: View {
         .font(.system(size: 8, weight: .bold))
         .padding(.horizontal, 5)
         .padding(.vertical, 3)
-        .foregroundStyle(PastelPalette.textOnDark)
-        .background(PastelPalette.chipDark.opacity(0.95), in: Capsule(style: .continuous))
+        .foregroundStyle(PastelPalette.textPrimary)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.9))
+        )
     }
 }

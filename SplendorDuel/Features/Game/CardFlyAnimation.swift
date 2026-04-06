@@ -78,7 +78,6 @@ struct FlyingCardView: View {
             onReserve: {}
         )
             .scaleEffect(1 - phase * 0.4)
-            .shadow(radius: CGFloat(9) * (1 - phase * 0.25))
             .opacity(Double(1 - phase * 0.45))
             .position(
                 x: startLocal.x + (targetLocal.x - startLocal.x) * phase,

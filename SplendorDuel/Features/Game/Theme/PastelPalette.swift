@@ -21,6 +21,15 @@ enum PastelPalette {
     /// Viền & bóng thẻ (mềm, không gắt)
     static let cardStroke = Color(red: 0.88, green: 0.90, blue: 0.94)
     static let cardShadow = Color(red: 0.2, green: 0.22, blue: 0.28).opacity(0.14)
+
+    /// Bóng sát đế + bóng lan — lá bài / deck như vật nằm trên mặt bàn (ánh sáng góc trên-trái).
+    static let tableShadowContact = Color(red: 0.07, green: 0.06, blue: 0.05).opacity(0.58)
+    static let tableShadowAmbient = Color(red: 0.11, green: 0.10, blue: 0.12).opacity(0.34)
+
+    /// Bóng khay token (khối lớn, gần mặt phẳng).
+    static let boardShadowContact = Color(red: 0.07, green: 0.06, blue: 0.05).opacity(0.44)
+    static let boardShadowAmbient = Color(red: 0.10, green: 0.09, blue: 0.11).opacity(0.40)
+
     static let royalStroke = Color(red: 0.96, green: 0.86, blue: 0.58)
 
     /// Nút Buy / Res (pastel)
@@ -62,13 +71,28 @@ enum PastelPalette {
 // MARK: - Kích thước thẻ (development + royal cùng footprint)
 
 enum CardChrome {
-    static let width: CGFloat = 90
-    static let artHeight: CGFloat = 100
-    static let actionRowHeight: CGFloat = 30
-    static var totalHeight: CGFloat { artHeight + actionRowHeight }
+    static let width: CGFloat = 110
+    static let artHeight: CGFloat = 155
+    static let actionColumnWidth: CGFloat = 32
+    static var totalWidth: CGFloat { width + actionColumnWidth }
+    static var totalHeight: CGFloat { artHeight }
 
-    /// Bo góc liên tục (iOS “smooth”)
     static let cornerRadius: CGFloat = 12
     static let shadowRadius: CGFloat = 8
     static let shadowY: CGFloat = 4
+}
+
+// MARK: - Bóng vật thể trên bàn
+
+extension View {
+    /// Hai lớp bóng: viền tối sát đế + vùng sáng mờ phía dưới-phải.
+    func tableLiftCardShadow() -> some View {
+        shadow(color: PastelPalette.tableShadowContact, radius: 2.5, x: 2, y: 3)
+            .shadow(color: PastelPalette.tableShadowAmbient, radius: 18, x: 0, y: 11)
+    }
+
+    func tableLiftBoardShadow() -> some View {
+        shadow(color: PastelPalette.boardShadowContact, radius: 4, x: 1, y: 5)
+            .shadow(color: PastelPalette.boardShadowAmbient, radius: 24, x: 0, y: 14)
+    }
 }

@@ -30,7 +30,7 @@ struct PlayerDashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(isCurrentTurn ? PastelPalette.accentSky.opacity(0.18) : PastelPalette.neutralSoft.opacity(0.55))
+        .background(isCurrentTurn ? Color(red: 0.88, green: 0.94, blue: 1.0) : Color.white)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
@@ -51,27 +51,29 @@ struct PlayerDashboardView: View {
     private var reservedRoyalRow: some View {
         VStack(alignment: .leading, spacing: 4) {
             Divider()
-            sectionTitle("Reserved & Royals")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                sectionTitle("Reserved")
+                HStack(spacing: 6) {
                     ForEach(0..<3, id: \.self) { index in
                         reservedSlot(at: index)
                     }
+                }
 
-                    Rectangle()
-                        .fill(PastelPalette.divider)
-                        .frame(width: 1, height: 90)
-                        .padding(.horizontal, 4)
+                Rectangle()
+                    .fill(PastelPalette.divider)
+                    .frame(width: 1, height: 74)
+                    .padding(.horizontal, 2)
 
+                VStack(spacing: 6) {
                     if player.royalCards.isEmpty {
-                        Text("No Royal")
+                        Image(systemName: "crown")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .frame(width: 72, height: 104)
-                            .background(PastelPalette.lily.opacity(0.35), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .frame(width: 42, height: 34)
+                            .background(PastelPalette.lily.opacity(0.35), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                     } else {
                         ForEach(player.royalCards) { royal in
-                            royalCardDisplay(royal)
+                            royalMiniThumb(royal)
                         }
                     }
                 }
@@ -95,19 +97,21 @@ struct PlayerDashboardView: View {
                 canAfford: isCurrentTurn && canAffordCard(card),
                 canReserve: false,
                 onPurchase: { onPurchaseReservedCard(card) },
-                onReserve: {}
+                onReserve: {},
+                isReservedSlot: true
             )
-            .scaleEffect(0.8)
-            .frame(width: 72, height: 104)
+            .scaleEffect(0.46)
+            .frame(width: 66, height: 74)
+            .clipped()
             .background(anchorPublisher(for: index))
         } else {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(PastelPalette.lily.opacity(0.45))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .stroke(PastelPalette.cardStroke.opacity(0.85), lineWidth: 1)
                 )
-                .frame(width: 72, height: 104)
+                .frame(width: 66, height: 74)
                 .background(anchorPublisher(for: index))
         }
     }
@@ -277,34 +281,26 @@ struct PlayerDashboardView: View {
         }
     }
 
-    private func royalCardDisplay(_ royal: RoyalCard) -> some View {
-        ZStack(alignment: .bottom) {
+    private func royalMiniThumb(_ royal: RoyalCard) -> some View {
+        ZStack(alignment: .bottomTrailing) {
             Image(royal.catalogImageName)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 72, height: 104)
+                .frame(width: 42, height: 34)
                 .clipped()
-            VStack(spacing: 3) {
-                Label(royalAbilityText(royal.ability), systemImage: royalAbilityIcon(royal.ability))
-                    .font(.system(size: 9, weight: .semibold))
-                    .labelStyle(.titleAndIcon)
-                Text("\(royal.prestigePoints)")
-                    .font(.caption.bold())
-               
-            }
-            .foregroundStyle(PastelPalette.textOnDark)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .background(PastelPalette.chipDark.opacity(0.95), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .padding(.bottom, 6)
+            Text("\(royal.prestigePoints)")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(2)
+                .background(PastelPalette.chipDark, in: Circle())
+                .offset(x: 2, y: 2)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .frame(width: 42, height: 34)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(PastelPalette.royalStroke, lineWidth: 1.8)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke(PastelPalette.royalStroke, lineWidth: 1.5)
         )
-        .shadow(color: PastelPalette.cardShadow, radius: 4, x: 0, y: 2)
-        .frame(width: 72, height: 104)
     }
 
     private func royalAbilityText(_ ability: CardAbility) -> String {

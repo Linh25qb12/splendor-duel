@@ -33,7 +33,12 @@ struct TokenView: View {
                                 )
                             )
                     )
-                    .shadow(color: .black.opacity(isSelected ? 0.28 : 0.16), radius: isSelected ? 6 : 3, x: 0, y: 2)
+                    .shadow(
+                        color: .black.opacity(isSelected ? 0.34 : 0.22),
+                        radius: isSelected ? 7 : 4,
+                        x: 1,
+                        y: isSelected ? 4 : 3
+                    )
 
                 // Permanent selection ring
                 if isSelected {
@@ -49,7 +54,7 @@ struct TokenView: View {
                     .padding(-3)
             }
         }
-        .frame(width: 44, height: 44)
+        .frame(width: 54, height: 54)
         // Token lifts up when selected, drops back when deselected
         .scaleEffect(bounceScale)
         .offset(y: isSelected ? -4 : 0)
@@ -126,9 +131,9 @@ struct BoardView: View {
     let onTokenTap: (Int, Int) -> Void
 
     var body: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 9) {
             ForEach(0..<5, id: \.self) { row in
-                HStack(spacing: 7) {
+                HStack(spacing: 9) {
                     ForEach(0..<5, id: \.self) { col in
                         let isSelected = selectedPositions.contains(where: { $0.row == row && $0.col == col })
                         BoardCellView(
@@ -140,7 +145,7 @@ struct BoardView: View {
                 }
             }
         }
-        .padding(10)
+        .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
@@ -155,6 +160,6 @@ struct BoardView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(PastelPalette.cardStroke, lineWidth: 1.2)
         )
-        .shadow(color: PastelPalette.cardShadow, radius: 6, x: 0, y: 3)
+        .tableLiftBoardShadow()
     }
 }

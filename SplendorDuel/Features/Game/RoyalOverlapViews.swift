@@ -44,7 +44,7 @@ struct RoyalCardButton: View {
                 RoundedRectangle(cornerRadius: CardChrome.cornerRadius, style: .continuous)
                     .stroke(PastelPalette.royalStroke, lineWidth: 2.5)
             )
-            .shadow(color: PastelPalette.cardShadow, radius: CardChrome.shadowRadius, x: 0, y: CardChrome.shadowY)
+            .tableLiftCardShadow()
         }
     }
 }
