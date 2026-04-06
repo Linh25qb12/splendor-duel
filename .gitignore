@@ -1,0 +1,5 @@
+# Build output (CLI / Cursor tasks)
+build/
+
+# macOS
+.DS_Store

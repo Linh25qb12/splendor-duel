@@ -1,0 +1,50 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "iOS: Build (Simulator)",
+      "type": "shell",
+      "command": "xcodebuild",
+      "args": [
+        "-scheme",
+        "splendor duel",
+        "-project",
+        "SplendorDuel.xcodeproj",
+        "-configuration",
+        "Debug",
+        "-destination",
+        "generic/platform=iOS Simulator",
+        "-derivedDataPath",
+        "${workspaceFolder}/build/DerivedData",
+        "COMPILER_INDEX_STORE_ENABLE=NO",
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "iOS: Build & Run (Simulator)",
+      "type": "shell",
+      "command": "${workspaceFolder}/Scripts/run-ios-simulator.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
