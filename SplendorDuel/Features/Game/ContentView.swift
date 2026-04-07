@@ -190,7 +190,7 @@ struct ContentView: View {
                     Label(royalAbilityText(royal.ability), systemImage: royalAbilityIcon(royal.ability))
                         .font(.system(size: 9, weight: .semibold))
                 }
-                Text("\(royal.prestigePoints) ")
+                Label("\(royal.prestigePoints)", systemImage: "star.fill")
                     .font(.system(size: 14, weight: .bold))
             }
             .foregroundStyle(.white)

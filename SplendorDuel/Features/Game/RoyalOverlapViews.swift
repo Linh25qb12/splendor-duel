@@ -30,7 +30,7 @@ struct RoyalCardButton: View {
                     if royal.ability == .privilege {
                         Text("+1 Scroll").font(.caption)
                     }
-                    Text("\(royal.prestigePoints) Pts")
+                    Label("\(royal.prestigePoints)", systemImage: "star.fill")
                         .font(.headline.bold())
                    
                 }

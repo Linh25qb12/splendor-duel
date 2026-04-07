@@ -92,7 +92,7 @@ struct PlayerDashboardView: View {
     private func reservedSlot(at index: Int) -> some View {
         if index < player.reservedCards.count {
             let card = player.reservedCards[index]
-            CardView(
+            CardView( 
                 card: card,
                 canAfford: isCurrentTurn && canAffordCard(card),
                 canReserve: false,
@@ -196,24 +196,32 @@ struct PlayerDashboardView: View {
         }
     }
 
+    private static let tokenDisplayOrder: [TokenType] = [
+        .white, .blue, .green, .red, .black, .pearl, .gold
+    ]
+
     @ViewBuilder
     private var tokenChips: some View {
-        ForEach(TokenType.allCases, id: \.self) { tokenType in
+        ForEach(Self.tokenDisplayOrder, id: \.self) { tokenType in
             let count = player.tokens[tokenType] ?? 0
-            if count > 0 {
-                HStack(spacing: 3) {
-                    Circle()
-                        .fill(colorFor(tokenType))
-                        .frame(width: 14, height: 14)
-                        .shadow(radius: 1)
-                    Text("x\(count)")
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(PastelPalette.lily.opacity(0.55), in: Capsule())
+            HStack(spacing: 3) {
+                Circle()
+                    .fill(colorFor(tokenType))
+                    .frame(width: 14, height: 14)
+                    .overlay(
+                        Circle().stroke(Color.black.opacity(0.12), lineWidth: 0.5)
+                    )
+                Text("\(count)")
+                    .font(.caption)
+                    .foregroundStyle(count > 0 ? .primary : .secondary)
             }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(
+                PastelPalette.lily.opacity(count > 0 ? 0.55 : 0.25),
+                in: Capsule()
+            )
+            .opacity(count > 0 ? 1 : 0.5)
         }
     }
 
@@ -288,12 +296,18 @@ struct PlayerDashboardView: View {
                 .scaledToFill()
                 .frame(width: 42, height: 34)
                 .clipped()
-            Text("\(royal.prestigePoints)")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(2)
-                .background(PastelPalette.chipDark, in: Circle())
-                .offset(x: 2, y: 2)
+            HStack(spacing: 1) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 6, weight: .bold))
+                Text("\(royal.prestigePoints)")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.8), radius: 0.5, x: 0, y: 0.5)
+            .padding(.horizontal, 3)
+            .padding(.vertical, 1.5)
+            .background(PastelPalette.chipDark, in: Capsule())
+            .offset(x: 2, y: 2)
         }
         .frame(width: 42, height: 34)
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))

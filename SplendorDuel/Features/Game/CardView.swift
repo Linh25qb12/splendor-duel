@@ -186,10 +186,11 @@ struct CardView: View {
             Circle()
                 .fill(gemColor(for: token))
                 .overlay(Circle().stroke(Color.black, lineWidth: 1.25))
-                .frame(width: 13, height: 13)
+                .frame(width: 15, height: 15)
             Text("\(amount)")
-                .font(.system(size: 7.5, weight: .black))
+                .font(.system(size: 9, weight: .black))
                 .foregroundStyle(token == .white || token == .gold ? .black : .white)
+                .shadow(color: .black.opacity(0.7), radius: 0.5, x: 0, y: 0.5)
         }
     }
 
