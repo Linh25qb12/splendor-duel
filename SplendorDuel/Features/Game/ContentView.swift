@@ -8,9 +8,19 @@ struct ContentView: View {
 
     // Owns the fly animator — passed down via @Environment
     @State private var flyAnimator = CardFlyAnimator()
+    @State private var showResetConfirmation = false
+    @State private var overlayPeeking = false
+    @State private var inspectedCard: Card? = nil
 
     var availableOverlapColors: [TokenType] {
         Array(Set(viewModel.currentPlayer.purchasedCards.compactMap { $0.bonus }))
+    }
+
+    private var hasActiveOverlay: Bool {
+        viewModel.isDiscardingTokens
+        || viewModel.isStealingToken
+        || viewModel.isSelectingRoyal
+        || viewModel.isSelectingOverlapColor
     }
 
     var body: some View {
@@ -38,6 +48,12 @@ struct ContentView: View {
         .environment(flyAnimator)
         .sheet(isPresented: $viewModel.isShowingRules) { RuleBookView() }
         .sheet(isPresented: $viewModel.isShowingHistory) { HistoryView(viewModel: viewModel) }
+        .overlay {
+            if let card = inspectedCard {
+                cardCostOverlay(card: card)
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: inspectedCard?.id)
     }
 
     /// Converts global frames (from `CardView` / dashboards) into this `GeometryReader`'s local space
@@ -94,21 +110,24 @@ struct ContentView: View {
     // MARK: - Body Subviews
 
     private var mainGameLayout: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 20) {
-                dashboardsRow
-                controlsRow
-                cardPyramidSection
-                royalTokenRow
-                statusMessages
+        GeometryReader { outer in
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 20) {
+                    dashboardsRow
+                    controlsRow
+                    cardPyramidSection
+                    royalTokenRow
+                    statusMessages
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 24)
+                .padding(.vertical, 10)
+                .frame(minHeight: outer.size.height)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 24)
-            .padding(.vertical, 10)
+            .scrollContentBackground(.hidden)
         }
-        .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .disabled(!viewModel.isMyTurn)
+        .disabled(!viewModel.isMyTurn || hasActiveOverlay)
         .blur(radius: viewModel.winnerName != nil ? 5 : 0)
     }
 
@@ -143,7 +162,7 @@ struct ContentView: View {
         let naturalW = maxItems * CardChrome.totalWidth + (maxItems - 1) * spacing
         let naturalH = 3 * CardChrome.totalHeight + 2 * 5
 
-        return GeometryReader { geo in
+         return GeometryReader { geo in
             let scale = min(1.0, geo.size.width / naturalW)
             CardPyramidView(viewModel: viewModel)
                 .scaleEffect(scale, anchor: .topLeading)
@@ -161,7 +180,7 @@ struct ContentView: View {
                 viewModel.handleTokenTap(row: r, col: c)
             }
 
-            let columns = [
+             let columns = [
                 GridItem(.flexible(), spacing: 8),
                 GridItem(.flexible(), spacing: 8)
             ]
@@ -211,26 +230,29 @@ struct ContentView: View {
 
     // MARK: - Status messages (matching token / gold select)
 
-    @ViewBuilder
     private var statusMessages: some View {
-        if viewModel.isTakingMatchingToken, let color = viewModel.matchingTokenColor {
-            Text("Ability: Tap a \(color.rawValue.capitalized) token!")
-                .font(.subheadline).bold()
-                .foregroundColor(color == .white ? PastelPalette.textPrimary : PastelPalette.textOnDark)
-                .padding(8)
-                .frame(maxWidth: .infinity)
-                .background(highlightColor(for: color))
-                .cornerRadius(8)
+        Group {
+            if viewModel.isTakingMatchingToken, let color = viewModel.matchingTokenColor {
+                Text("Ability: Tap a \(color.rawValue.capitalized) token!")
+                    .font(.subheadline).bold()
+                    .foregroundColor(color == .white ? PastelPalette.textPrimary : PastelPalette.textOnDark)
+                    .padding(8)
+                    .frame(maxWidth: .infinity)
+                    .background(highlightColor(for: color))
+                    .cornerRadius(8)
+            } else if viewModel.isSelectingGoldToken {
+                Text("Tap a Gold token to finish!")
+                    .font(.headline)
+                    .foregroundColor(PastelPalette.textOnDark)
+                    .padding(8)
+                    .frame(maxWidth: .infinity)
+                    .background(PastelPalette.warning)
+                    .cornerRadius(10)
+            } else {
+                Color.clear
+            }
         }
-        if viewModel.isSelectingGoldToken {
-            Text("Tap a Gold token to finish!")
-                .font(.headline)
-                .foregroundColor(PastelPalette.textOnDark)
-                .padding(8)
-                .frame(maxWidth: .infinity)
-                .background(PastelPalette.warning)
-                .cornerRadius(10)
-        }
+        .frame(height: 36)
     }
 
     // MARK: - All controls below player dashboards (Rules … Take Tokens)
@@ -243,7 +265,7 @@ struct ContentView: View {
             }
             .font(.caption2)
             .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.accentSky.opacity(0.55))
+            .background(PastelPalette.accentSky)
             .foregroundStyle(PastelPalette.buttonLabelOnPastel)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
@@ -253,19 +275,25 @@ struct ContentView: View {
             }
             .font(.caption2)
             .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.lavender.opacity(0.5))
+            .background(PastelPalette.lavender)
             .foregroundStyle(PastelPalette.buttonLabelOnPastel)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            Button(action: { onReset() }) {
+            Button(action: { showResetConfirmation = true }) {
                 Label("Reset", systemImage: "arrow.counterclockwise")
                     .labelStyle(.titleAndIcon)
             }
             .font(.caption2)
             .foregroundStyle(PastelPalette.buttonLabelOnPastel)
             .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.accentRose.opacity(0.45))
+            .background(PastelPalette.accentRose)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .alert("Reset Game?", isPresented: $showResetConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Reset", role: .destructive) { onReset() }
+            } message: {
+                Text("All progress will be lost.")
+            }
 
             Button(action: { withAnimation { viewModel.refillBoard() } }) {
                 Label("Refill", systemImage: "arrow.triangle.2.circlepath")
@@ -274,7 +302,7 @@ struct ContentView: View {
             .font(.caption2)
             .foregroundStyle(PastelPalette.buttonLabelOnPastel)
             .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.lily.opacity(0.9))
+            .background(PastelPalette.lily)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .disabled(viewModel.board.tokenBag.isEmpty)
 
@@ -305,8 +333,6 @@ struct ContentView: View {
     }
 
     private var overlays: some View {
-        // animation(.spring) here ensures all overlay insert/remove transitions
-        // use the spring curve automatically
         Group {
             if let winner = viewModel.winnerName {
                 VStack(spacing: 20) {
@@ -324,10 +350,16 @@ struct ContentView: View {
                 .overlayCard()
             }
 
-            if viewModel.isDiscardingTokens { discardOverlay }
-            if viewModel.isStealingToken { stealOverlay }
-            if viewModel.isSelectingRoyal { royalOverlay }
-            if viewModel.isSelectingOverlapColor { overlapOverlay }
+            if hasActiveOverlay && !overlayPeeking {
+                if viewModel.isDiscardingTokens { discardOverlay }
+                if viewModel.isStealingToken { stealOverlay }
+                if viewModel.isSelectingRoyal { royalOverlay }
+                if viewModel.isSelectingOverlapColor { overlapOverlay }
+            }
+
+            if hasActiveOverlay && overlayPeeking {
+                peekResumeButton
+            }
 
             if viewModel.isMultiplayer && !viewModel.isMyTurn {
                 ZStack {
@@ -344,10 +376,47 @@ struct ContentView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.isSelectingRoyal)
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.isSelectingOverlapColor)
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.winnerName != nil)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: overlayPeeking)
+        .onChange(of: hasActiveOverlay) { _, active in
+            if !active { overlayPeeking = false }
+        }
+    }
+
+    private var peekResumeButton: some View {
+        VStack {
+            Spacer()
+            Button(action: { withAnimation { overlayPeeking = false } }) {
+                Label("Continue", systemImage: "arrow.up.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(PastelPalette.info, in: Capsule())
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private var peekButton: some View {
+        Button(action: { withAnimation { overlayPeeking = true } }) {
+            Label("View Board", systemImage: "eye")
+                .font(.caption).bold()
+                .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(PastelPalette.neutralSoft, in: Capsule())
+        }
     }
 
     private var discardOverlay: some View {
         VStack(spacing: 20) {
+            HStack {
+                Spacer()
+                peekButton
+            }
             Text("Token Limit Exceeded!").font(.title2).bold().foregroundColor(PastelPalette.danger)
             Text("You have \(viewModel.currentPlayer.totalTokenCount) tokens.\nPlease discard \(viewModel.tokensToDiscard).")
                 .multilineTextAlignment(.center)
@@ -375,6 +444,10 @@ struct ContentView: View {
 
     private var stealOverlay: some View {
         VStack(spacing: 20) {
+            HStack {
+                Spacer()
+                peekButton
+            }
             Label("Thief!", systemImage: "hand.raised.fill")
                 .font(.largeTitle).bold()
             Text("Select one of \(viewModel.opponent.name)'s tokens to steal.")
@@ -410,6 +483,10 @@ struct ContentView: View {
 
     private var royalOverlay: some View {
         VStack(spacing: 20) {
+            HStack {
+                Spacer()
+                peekButton
+            }
             Label("Royal Audience", systemImage: "crown.fill")
                 .font(.largeTitle).bold()
             Text("You reached a Crown milestone!\nSelect a Royal Card to claim.")
@@ -435,6 +512,10 @@ struct ContentView: View {
 
     private var overlapOverlay: some View {
         VStack(spacing: 20) {
+            HStack {
+                Spacer()
+                peekButton
+            }
             Label("Overlap Bonus", systemImage: "link")
                 .font(.title).bold()
             Text("Choose an existing bonus color to copy.").multilineTextAlignment(.center)
@@ -461,6 +542,54 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: PastelPalette.cardShadow, radius: CardChrome.shadowRadius, x: 0, y: CardChrome.shadowY)
         .overlayCard()
+    }
+
+    // MARK: - Card Cost Breakdown Overlay
+
+    private func cardCostOverlay(card: Card) -> some View {
+        let player = viewModel.currentPlayer
+        let missing: [(TokenType, Int)] = card.cost.compactMap { token, required in
+            let bonus = player.bonuses[token] ?? 0
+            let owned = player.tokens[token] ?? 0
+            let deficit = max(0, max(0, required - bonus) - owned)
+            return deficit > 0 ? (token, deficit) : nil
+        }.sorted { $0.0.rawValue < $1.0.rawValue }
+
+        return ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .onTapGesture { withAnimation { inspectedCard = nil } }
+
+            Group {
+                if missing.isEmpty {
+                    Label("Affordable", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                } else {
+                    HStack(spacing: 8) {
+                        Text("Need")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white.opacity(0.85))
+                        ForEach(missing, id: \.0) { token, count in
+                            HStack(spacing: 3) {
+                                Circle()
+                                    .fill(token.color)
+                                    .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                                    .frame(width: 24, height: 24)
+                                Text("×\(count)")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 11)
+            .background(Color.black.opacity(0.75), in: Capsule())
+            .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 6)
+            .transition(.scale(scale: 0.9).combined(with: .opacity))
+        }
     }
 
     private func highlightColor(for color: TokenType) -> Color {

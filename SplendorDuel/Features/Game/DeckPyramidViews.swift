@@ -4,37 +4,47 @@ import SwiftUI
 
 struct CardPyramidView: View {
     var viewModel: GameViewModel
+    var onInspect: ((Card) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .center, spacing: 5) {
-            // Level 3
             HStack(spacing: 8) {
                 DeckView(level: 3, isEmpty: viewModel.deckLevel3.isEmpty, canReserve: viewModel.canReserveAny()) {
                     viewModel.reserveCardFromDeck(level: 3)
                 }
                 ForEach(viewModel.tableCardsLevel3) { card in
-                    CardView(card: card, canAfford: viewModel.canAfford(card: card), canReserve: viewModel.canReserve(card: card), onPurchase: { viewModel.purchaseCard(card) }, onReserve: { viewModel.reserveCard(card) }, isPlayer1Turn: viewModel.isPlayer1Turn)
+                    cardCell(card)
                 }
             }
-            // Level 2
             HStack(spacing: 8) {
                 DeckView(level: 2, isEmpty: viewModel.deckLevel2.isEmpty, canReserve: viewModel.canReserveAny()) {
                     viewModel.reserveCardFromDeck(level: 2)
                 }
                 ForEach(viewModel.tableCardsLevel2) { card in
-                    CardView(card: card, canAfford: viewModel.canAfford(card: card), canReserve: viewModel.canReserve(card: card), onPurchase: { viewModel.purchaseCard(card) }, onReserve: { viewModel.reserveCard(card) }, isPlayer1Turn: viewModel.isPlayer1Turn)
+                    cardCell(card)
                 }
             }
-            // Level 1
             HStack(spacing: 8) {
                 DeckView(level: 1, isEmpty: viewModel.deckLevel1.isEmpty, canReserve: viewModel.canReserveAny()) {
                     viewModel.reserveCardFromDeck(level: 1)
                 }
                 ForEach(viewModel.tableCardsLevel1) { card in
-                    CardView(card: card, canAfford: viewModel.canAfford(card: card), canReserve: viewModel.canReserve(card: card), onPurchase: { viewModel.purchaseCard(card) }, onReserve: { viewModel.reserveCard(card) }, isPlayer1Turn: viewModel.isPlayer1Turn)
+                    cardCell(card)
                 }
             }
         }
+    }
+
+    private func cardCell(_ card: Card) -> some View {
+        CardView(
+            card: card,
+            canAfford: viewModel.canAfford(card: card),
+            canReserve: viewModel.canReserve(card: card),
+            onPurchase: { viewModel.purchaseCard(card) },
+            onReserve: { viewModel.reserveCard(card) },
+            onInspect: onInspect,
+            isPlayer1Turn: viewModel.isPlayer1Turn
+        )
     }
 }
 

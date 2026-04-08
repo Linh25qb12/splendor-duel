@@ -11,8 +11,9 @@ struct CardView: View {
 
     /// Chỉ dùng cho thẻ trong slot Reserved — chỉ hiện nút Buy, không Res.
     var isReservedSlot: Bool = false
+    var onInspect: ((Card) -> Void)? = nil
 
-    var isPlayer1Turn: Bool = true  // passed from CardPyramidView so fly routes correctly
+    var isPlayer1Turn: Bool = true
     @Environment(CardFlyAnimator.self) private var flyAnimator
     @State private var cardFrame: CGRect = .zero
     private let commitSafetyOffset: TimeInterval = 0.06
@@ -49,6 +50,8 @@ struct CardView: View {
             }
             .frame(width: CardChrome.width, height: CardChrome.artHeight)
             .clipped()
+            .contentShape(Rectangle())
+            .onTapGesture { onInspect?(card) }
 
             Group {
                 if isReservedSlot {

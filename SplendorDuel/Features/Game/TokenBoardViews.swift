@@ -107,9 +107,7 @@ struct TokenView: View {
     let type: TokenType?
     var isSelected: Bool = false
 
-    // Drives the bounce when selection state changes
     @State private var bounceScale: CGFloat = 1.0
-    // Drives the ring pulse on selection
     @State private var ringScale: CGFloat = 1.0
     @State private var ringOpacity: Double = 0.0
 
@@ -129,14 +127,12 @@ struct TokenView: View {
                         y: isSelected ? 5 : 4
                     )
 
-                // Permanent selection ring
                 if isSelected {
                     Circle()
                         .stroke(PastelPalette.accentSky, lineWidth: 3)
                         .padding(-3)
                 }
 
-                // Pulse ring that bursts outward on selection
                 Circle()
                     .stroke(PastelPalette.accentSky.opacity(ringOpacity), lineWidth: 3)
                     .scaleEffect(ringScale)

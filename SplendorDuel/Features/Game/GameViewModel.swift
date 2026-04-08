@@ -306,6 +306,7 @@ class GameViewModel {
     // MARK: - Reserve
     
     func canReserveAny() -> Bool {
+        guard !isSelectingGoldToken else { return false }
         let hasRoom = currentPlayer.reservedCards.count < 3
         let goldExists = board.grid.joined().contains(.gold)
         return hasRoom && goldExists
@@ -348,6 +349,7 @@ class GameViewModel {
     // MARK: - Purchase
     
     func canAfford(card: Card) -> Bool {
+        guard !isSelectingGoldToken else { return false }
         var totalMissingTokens = 0
         for (tokenType, costAmount) in card.cost {
             let playerTokens = currentPlayer.tokens[tokenType] ?? 0
