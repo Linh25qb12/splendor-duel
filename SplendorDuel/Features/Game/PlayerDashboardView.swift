@@ -15,7 +15,7 @@ struct PlayerDashboardView: View {
     private let bonusAnchorTypes: [TokenType] = [.white, .blue, .green, .red, .black]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
             headerRow
             tokenRow
             purchasedBonusesRow
@@ -52,7 +52,6 @@ struct PlayerDashboardView: View {
         VStack(alignment: .leading, spacing: 4) {
             Divider()
             HStack(alignment: .top, spacing: 10) {
-                sectionTitle("Reserved")
                 HStack(spacing: 6) {
                     ForEach(0..<3, id: \.self) { index in
                         reservedSlot(at: index)
@@ -61,7 +60,7 @@ struct PlayerDashboardView: View {
 
                 Rectangle()
                     .fill(PastelPalette.divider)
-                    .frame(width: 1, height: 74)
+                    .frame(width: 1, height: 106)
                     .padding(.horizontal, 2)
 
                 VStack(spacing: 6) {
@@ -100,18 +99,18 @@ struct PlayerDashboardView: View {
                 onReserve: {},
                 isReservedSlot: true
             )
-            .scaleEffect(0.46)
-            .frame(width: 66, height: 74)
-            .clipped()
+            .scaleEffect(0.68)
+            .frame(width: 97, height: 106)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .background(anchorPublisher(for: index))
         } else {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(PastelPalette.lily.opacity(0.45))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(PastelPalette.cardStroke.opacity(0.85), lineWidth: 1)
                 )
-                .frame(width: 66, height: 74)
+                .frame(width: 97, height: 106)
                 .background(anchorPublisher(for: index))
         }
     }
@@ -144,18 +143,10 @@ struct PlayerDashboardView: View {
     }
 
     private var tokenRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             sectionTitle("Tokens")
-            if !hasAnyToken {
-                Text("-").font(.caption).foregroundStyle(.secondary)
-            } else {
-                HStack(spacing: 6) { tokenChips }
-            }
+            HStack(spacing: 3) { tokenChips }
         }
-    }
-
-    private var hasAnyToken: Bool {
-        TokenType.allCases.contains { (player.tokens[$0] ?? 0) > 0 }
     }
 
     private var purchasedBonusesRow: some View {
@@ -166,21 +157,24 @@ struct PlayerDashboardView: View {
                 ZStack {
                     if count > 0 {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 4)
+                            RoundedRectangle(cornerRadius: 3)
                                 .fill(colorFor(tokenType))
-                                .frame(width: 22, height: 30)
                                 .shadow(radius: 1)
-                            RoundedRectangle(cornerRadius: 4)
+                            RoundedRectangle(cornerRadius: 3)
                                 .stroke(PastelPalette.textSecondary.opacity(0.55), lineWidth: 1)
-                                .frame(width: 22, height: 30)
                             Text("\(count)")
                                 .font(.caption2).bold()
                                 .foregroundColor(tokenType == .white ? PastelPalette.textPrimary : PastelPalette.textOnDark)
                         }
+                        .frame(width: 18, height: 20)
                     } else {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.clear)
-                            .frame(width: 22, height: 30)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(colorFor(tokenType).opacity(0.15))
+                            RoundedRectangle(cornerRadius: 3)
+                                .stroke(PastelPalette.cardStroke.opacity(0.4), lineWidth: 1)
+                        }
+                        .frame(width: 18, height: 20)
                     }
                 }
                 .background(
@@ -194,6 +188,7 @@ struct PlayerDashboardView: View {
                 )
             }
         }
+        .padding(.vertical, 3)
     }
 
     private static let tokenDisplayOrder: [TokenType] = [
@@ -215,8 +210,8 @@ struct PlayerDashboardView: View {
                     .font(.caption)
                     .foregroundStyle(count > 0 ? .primary : .secondary)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
+            .padding(.horizontal, 3)
+            .padding(.vertical, 1)
             .background(
                 PastelPalette.lily.opacity(count > 0 ? 0.55 : 0.25),
                 in: Capsule()

@@ -114,7 +114,6 @@ struct ContentView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 20) {
                     dashboardsRow
-                    controlsRow
                     cardPyramidSection
                     royalTokenRow
                     statusMessages
@@ -164,7 +163,9 @@ struct ContentView: View {
 
          return GeometryReader { geo in
             let scale = min(1.0, geo.size.width / naturalW)
-            CardPyramidView(viewModel: viewModel)
+            CardPyramidView(viewModel: viewModel) { card in
+                    inspectedCard = card
+                }
                 .scaleEffect(scale, anchor: .topLeading)
                 .frame(width: naturalW, height: naturalH, alignment: .topLeading)
         }
@@ -175,12 +176,14 @@ struct ContentView: View {
     // MARK: - Token board (left) + Royal grid 2x2 (right)
 
     private var royalTokenRow: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 14) {
+            gameControlsLeft
+            tokenBagColumn
             BoardView(board: viewModel.board, selectedPositions: viewModel.selectedPositions) { r, c in
                 viewModel.handleTokenTap(row: r, col: c)
             }
 
-             let columns = [
+            let columns = [
                 GridItem(.flexible(), spacing: 8),
                 GridItem(.flexible(), spacing: 8)
             ]
@@ -190,6 +193,8 @@ struct ContentView: View {
                 }
             }
             .frame(maxWidth: 250)
+
+            menuControlsRight
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 4)
@@ -255,80 +260,106 @@ struct ContentView: View {
         .frame(height: 36)
     }
 
-    // MARK: - All controls below player dashboards (Rules … Take Tokens)
+    // MARK: - Token Bag preview
 
-    private var controlsRow: some View {
-        HStack(spacing: 6) {
-            Button(action: { viewModel.isShowingRules = true }) {
-                Label("Rules", systemImage: "book.closed.fill")
-                    .labelStyle(.titleAndIcon)
-            }
-            .font(.caption2)
-            .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.accentSky)
-            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    private static let bagDisplayOrder: [TokenType] = [
+        .white, .blue, .green, .red, .black, .pearl, .gold
+    ]
 
-            Button(action: { viewModel.isShowingHistory = true }) {
-                Label("History", systemImage: "clock.fill")
-                    .labelStyle(.titleAndIcon)
+    private var tokenBagColumn: some View {
+        let counts = Dictionary(
+            viewModel.board.tokenBag.map { ($0, 1) },
+            uniquingKeysWith: +
+        )
+        return VStack(spacing: 4) {
+            ForEach(Self.bagDisplayOrder, id: \.self) { t in
+                let c = counts[t] ?? 0
+                ZStack {
+                    TokenView(type: t)
+                        .frame(width: 54, height: 54)
+                        .scaleEffect(0.58)
+                        .frame(width: 32, height: 32)
+                    Text("\(c)")
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .foregroundStyle(
+                            t == .white || t == .gold ? .black : .white
+                        )
+                        .shadow(color: .black.opacity(0.5), radius: 0.5, y: 0.5)
+                }
+                .opacity(c > 0 ? 1 : 0.2)
             }
-            .font(.caption2)
-            .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.lavender)
-            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(PastelPalette.cardStroke.opacity(0.5), lineWidth: 1)
+        )
+    }
 
-            Button(action: { showResetConfirmation = true }) {
-                Label("Reset", systemImage: "arrow.counterclockwise")
-                    .labelStyle(.titleAndIcon)
+    // MARK: - Game controls (left of token board): Refill, Privilege, Take
+
+    private var gameControlsLeft: some View {
+        VStack(spacing: 12) {
+            iconBtn("arrow.triangle.2.circlepath", bg: PastelPalette.lily) {
+                withAnimation { viewModel.refillBoard() }
             }
-            .font(.caption2)
-            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.accentRose)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .disabled(viewModel.board.tokenBag.isEmpty)
+
+            iconBtn(
+                "scroll.fill",
+                bg: viewModel.canUsePrivilege() ? PastelPalette.accentSage : PastelPalette.buyDisabled
+            ) {
+                withAnimation { viewModel.usePrivilege() }
+            }
+            .disabled(!viewModel.canUsePrivilege())
+
+            iconBtn(
+                "hand.tap.fill",
+                bg: viewModel.isSelectionValid() ? PastelPalette.accentSky : PastelPalette.buyDisabled
+            ) {
+                withAnimation { viewModel.confirmTokenSelection() }
+            }
+            .disabled(!viewModel.isSelectionValid())
+        }
+    }
+
+    // MARK: - Menu controls (right of royal cards): Rules, History, Reset
+
+    private var menuControlsRight: some View {
+        VStack(spacing: 12) {
+            iconBtn("book.closed.fill", bg: PastelPalette.accentSky) {
+                viewModel.isShowingRules = true
+            }
+            iconBtn("clock.fill", bg: PastelPalette.lavender) {
+                viewModel.isShowingHistory = true
+            }
+            iconBtn("arrow.counterclockwise", bg: PastelPalette.accentRose) {
+                showResetConfirmation = true
+            }
             .alert("Reset Game?", isPresented: $showResetConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Reset", role: .destructive) { onReset() }
             } message: {
                 Text("All progress will be lost.")
             }
+        }
+    }
 
-            Button(action: { withAnimation { viewModel.refillBoard() } }) {
-                Label("Refill", systemImage: "arrow.triangle.2.circlepath")
-                    .labelStyle(.titleAndIcon)
-            }
-            .font(.caption2)
-            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(PastelPalette.lily)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .disabled(viewModel.board.tokenBag.isEmpty)
-
-            Spacer(minLength: 4)
-
-            Button(action: { withAnimation { viewModel.usePrivilege() } }) {
-                Text("Privilege")
-                    .font(.caption2).bold()
-            }
-            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .padding(.vertical, 6).padding(.horizontal, 8)
-            .background(viewModel.canUsePrivilege() ? PastelPalette.accentSage : PastelPalette.buyDisabled)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .disabled(!viewModel.canUsePrivilege())
-
-            Button(action: { withAnimation { viewModel.confirmTokenSelection() } }) {
-                Text("Take Tokens")
-                    .font(.caption2).bold()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-            .padding(.vertical, 6).padding(.horizontal, 6)
-            .background(viewModel.isSelectionValid() ? PastelPalette.accentSky : PastelPalette.buyDisabled)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .disabled(!viewModel.isSelectionValid())
+    private func iconBtn(
+        _ icon: String, bg: Color, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+                .frame(width: 40, height: 40)
+                .background(bg)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
     }
 
