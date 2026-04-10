@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var isDebugMode = false
     @State private var isDebugCollapsed = true
     @State private var debugPlayerIndex = 0
+    private let audio = AudioManager.shared
 
     var availableOverlapColors: [TokenType] {
         Array(Set(viewModel.currentPlayer.purchasedCards.compactMap { $0.bonus }))
@@ -60,6 +61,8 @@ struct ContentView: View {
             if isDebugMode { debugBar }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: inspectedCard?.id)
+        .onAppear { audio.playBGM() }
+        .onDisappear { audio.stopBGM() }
     }
 
     /// Converts global frames (from `CardView` / dashboards) into this `GeometryReader`'s local space
@@ -338,6 +341,13 @@ struct ContentView: View {
 
     private var menuControlsRight: some View {
         VStack(spacing: 10) {
+            labelBtn(
+                audio.isBGMPlaying ? "On" : "Off",
+                icon: audio.isBGMPlaying ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                bg: audio.isBGMPlaying ? PastelPalette.accentSage : PastelPalette.neutralMid
+            ) {
+                audio.toggleBGM()
+            }
             labelBtn("Rule", icon: "book.closed.fill", bg: PastelPalette.accentSky) {
                 viewModel.isShowingRules = true
             }

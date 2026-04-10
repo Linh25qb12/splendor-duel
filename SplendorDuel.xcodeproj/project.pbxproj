@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 888C189C2F6A37C20000C2A6 /* Build configuration list for PBXProject "splendor duel" */;
+			buildConfigurationList = 888C189C2F6A37C20000C2A6 /* Build configuration list for PBXProject "SplendorDuel" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -390,7 +390,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "SplendorDuel/Configuration/splendor_duel.entitlements";
+				CODE_SIGN_ENTITLEMENTS = SplendorDuel/Configuration/splendor_duel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 72S46GRVTP;
@@ -398,6 +398,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/SplendorDuel-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Splendor Duel";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "We need this to connect you to nearby players.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -409,7 +410,6 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_CFBundleDisplayName = "Splendor Duel";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -432,7 +432,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "SplendorDuel/Configuration/splendor_duel.entitlements";
+				CODE_SIGN_ENTITLEMENTS = SplendorDuel/Configuration/splendor_duel.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 72S46GRVTP;
@@ -562,7 +562,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		888C189C2F6A37C20000C2A6 /* Build configuration list for PBXProject "splendor duel" */ = {
+		888C189C2F6A37C20000C2A6 /* Build configuration list for PBXProject "SplendorDuel" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				888C18C62F6A37C30000C2A6 /* Debug */,
