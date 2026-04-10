@@ -697,16 +697,14 @@ struct ContentView: View {
                 .font(.largeTitle).bold()
             Text("You reached a Crown milestone!\nSelect a Royal Card to claim.")
                 .multilineTextAlignment(.center)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(viewModel.availableRoyals) { royal in
-                        RoyalCardButton(royal: royal) {
-                            withAnimation { viewModel.claimRoyal(royal) }
-                        }
+            HStack(spacing: 16) {
+                ForEach(viewModel.availableRoyals) { royal in
+                    RoyalCardButton(royal: royal) {
+                        withAnimation { viewModel.claimRoyal(royal) }
                     }
                 }
-                .padding(.horizontal, 4)
             }
+            .padding(12)
             .frame(maxWidth: .infinity)
         }
         .padding(30)
