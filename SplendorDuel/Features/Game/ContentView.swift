@@ -304,22 +304,22 @@ struct ContentView: View {
     // MARK: - Game controls (left of token board): Refill, Privilege, Take
 
     private var gameControlsLeft: some View {
-        VStack(spacing: 12) {
-            iconBtn("arrow.triangle.2.circlepath", bg: PastelPalette.lily) {
+        VStack(spacing: 10) {
+            labelBtn("Fill", icon: "arrow.triangle.2.circlepath", bg: PastelPalette.lily) {
                 withAnimation { viewModel.refillBoard() }
             }
             .disabled(viewModel.board.tokenBag.isEmpty)
 
-            iconBtn(
-                "scroll.fill",
+            labelBtn(
+                "Scroll", icon: "scroll.fill",
                 bg: viewModel.canUsePrivilege() ? PastelPalette.accentSage : PastelPalette.buyDisabled
             ) {
                 withAnimation { viewModel.usePrivilege() }
             }
             .disabled(!viewModel.canUsePrivilege())
 
-            iconBtn(
-                "hand.tap.fill",
+            labelBtn(
+                "Take", icon: "hand.tap.fill",
                 bg: viewModel.isSelectionValid() ? PastelPalette.accentSky : PastelPalette.buyDisabled
             ) {
                 withAnimation { viewModel.confirmTokenSelection() }
@@ -331,14 +331,14 @@ struct ContentView: View {
     // MARK: - Menu controls (right of royal cards): Rules, History, Reset
 
     private var menuControlsRight: some View {
-        VStack(spacing: 12) {
-            iconBtn("book.closed.fill", bg: PastelPalette.accentSky) {
+        VStack(spacing: 10) {
+            labelBtn("Rule", icon: "book.closed.fill", bg: PastelPalette.accentSky) {
                 viewModel.isShowingRules = true
             }
-            iconBtn("clock.fill", bg: PastelPalette.lavender) {
+            labelBtn("Log", icon: "clock.fill", bg: PastelPalette.lavender) {
                 viewModel.isShowingHistory = true
             }
-            iconBtn("arrow.counterclockwise", bg: PastelPalette.accentRose) {
+            labelBtn("Reset", icon: "arrow.counterclockwise", bg: PastelPalette.accentRose) {
                 showResetConfirmation = true
             }
             .alert("Reset Game?", isPresented: $showResetConfirmation) {
@@ -350,16 +350,22 @@ struct ContentView: View {
         }
     }
 
-    private func iconBtn(
-        _ icon: String, bg: Color, action: @escaping () -> Void
+    private func labelBtn(
+        _ title: String, icon: String, bg: Color, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(PastelPalette.buttonLabelOnPastel)
-                .frame(width: 40, height: 40)
-                .background(bg)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(spacing: 2) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+                    .frame(width: 36, height: 36)
+                    .background(bg)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.7), radius: 1, y: 1)
+            }
         }
     }
 
