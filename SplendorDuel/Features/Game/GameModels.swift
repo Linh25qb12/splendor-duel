@@ -73,17 +73,19 @@ struct Player: Identifiable, Codable {
     var reservedCards: [Card] = []
     var royalCards: [RoyalCard] = []
     var privileges: Int = 0
-    
+    var debugPrestigeBonus: Int = 0
+    var debugCrownBonus: Int = 0
+
     var totalTokenCount: Int { tokens.values.reduce(0, +) }
-    
+
     var totalCrowns: Int {
-        purchasedCards.reduce(0) { $0 + $1.crowns }
+        purchasedCards.reduce(0) { $0 + $1.crowns } + debugCrownBonus
     }
-    
+
     var totalPrestigePoints: Int {
         let cardPoints = purchasedCards.reduce(0) { $0 + $1.prestigePoints }
         let royalPoints = royalCards.reduce(0) { $0 + $1.prestigePoints }
-        return cardPoints + royalPoints
+        return cardPoints + royalPoints + debugPrestigeBonus
     }
     
     var bonuses: [TokenType: Int] {

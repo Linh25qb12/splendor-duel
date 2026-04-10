@@ -11,6 +11,9 @@ struct ContentView: View {
     @State private var showResetConfirmation = false
     @State private var overlayPeeking = false
     @State private var inspectedCard: Card? = nil
+    @State private var isDebugMode = false
+    @State private var isDebugCollapsed = true
+    @State private var debugPlayerIndex = 0
 
     var availableOverlapColors: [TokenType] {
         Array(Set(viewModel.currentPlayer.purchasedCards.compactMap { $0.bonus }))
@@ -52,6 +55,9 @@ struct ContentView: View {
             if let card = inspectedCard {
                 cardCostOverlay(card: card)
             }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if isDebugMode { debugBar }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: inspectedCard?.id)
     }
@@ -347,6 +353,13 @@ struct ContentView: View {
             } message: {
                 Text("All progress will be lost.")
             }
+            labelBtn(
+                "Debug", icon: "ladybug.fill",
+                bg: isDebugMode ? .orange : .gray
+            ) {
+                withAnimation(.spring(response: 0.3)) { isDebugMode.toggle() }
+            }
+            .disabled(viewModel.isMultiplayer)
         }
     }
 
@@ -366,6 +379,162 @@ struct ContentView: View {
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.7), radius: 1, y: 1)
             }
+        }
+    }
+
+    // MARK: - Debug Bar
+
+    private var debugPlayer: Binding<Player> {
+        debugPlayerIndex == 0
+            ? Binding(get: { viewModel.player1 }, set: { viewModel.player1 = $0 })
+            : Binding(get: { viewModel.player2 }, set: { viewModel.player2 = $0 })
+    }
+
+    @ViewBuilder
+    private var debugBar: some View {
+        if isDebugCollapsed {
+            Button {
+                withAnimation(.spring(response: 0.25)) { isDebugCollapsed = false }
+            } label: {
+                Label("Debug", systemImage: "ladybug.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
+            }
+            .padding(.trailing, 16)
+            .padding(.bottom, 20)
+            .transition(.scale.combined(with: .opacity))
+        } else {
+            VStack(spacing: 0) {
+                debugHeader
+                Divider()
+                debugContent
+            }
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(.orange.opacity(0.5), lineWidth: 1.5)
+            )
+            .shadow(color: .black.opacity(0.3), radius: 10, y: -4)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private var debugHeader: some View {
+        HStack {
+            Image(systemName: "ladybug.fill")
+                .foregroundStyle(.orange)
+                .font(.system(size: 12))
+            Text("Debug")
+                .font(.system(size: 12, weight: .bold))
+
+            Spacer()
+
+            Picker("Player", selection: $debugPlayerIndex) {
+                Text("P1").tag(0)
+                Text("P2").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 100)
+
+            Button {
+                withAnimation(.spring(response: 0.25)) { isDebugCollapsed = true }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.quaternary, in: Circle())
+            }
+
+            Button {
+                withAnimation(.spring(response: 0.25)) {
+                    isDebugMode = false
+                    isDebugCollapsed = true
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.quaternary, in: Circle())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var debugContent: some View {
+        let tokenTypes: [TokenType] = [.white, .blue, .green, .red, .black, .pearl, .gold]
+        let cols3 = Array(repeating: GridItem(.flexible()), count: 3)
+
+        return VStack(spacing: 6) {
+            LazyVGrid(columns: cols3, spacing: 4) {
+                ForEach(tokenTypes, id: \.self) { t in
+                    debugTokenRow(t)
+                }
+            }
+
+            Divider()
+
+            LazyVGrid(columns: cols3, spacing: 4) {
+                debugStatRow("star.fill", label: "Pts",
+                             value: debugPlayer.wrappedValue.debugPrestigeBonus) { v in
+                    debugPlayer.wrappedValue.debugPrestigeBonus = v
+                }
+                debugStatRow("crown.fill", label: "Crown",
+                             value: debugPlayer.wrappedValue.debugCrownBonus) { v in
+                    debugPlayer.wrappedValue.debugCrownBonus = v
+                }
+                debugStatRow("scroll.fill", label: "Scroll",
+                             value: debugPlayer.wrappedValue.privileges,
+                             maxVal: 3) { v in
+                    debugPlayer.wrappedValue.privileges = v
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private func debugTokenRow(_ t: TokenType) -> some View {
+        let current = debugPlayer.wrappedValue.tokens[t] ?? 0
+        return HStack(spacing: 6) {
+            Circle().fill(t.color)
+                .overlay(Circle().stroke(.black.opacity(0.15), lineWidth: 0.5))
+                .frame(width: 16, height: 16)
+            Text("\(current)")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .frame(width: 20)
+            Stepper("", value: Binding(
+                get: { debugPlayer.wrappedValue.tokens[t] ?? 0 },
+                set: { debugPlayer.wrappedValue.tokens[t] = max(0, min(10, $0)) }
+            ), in: 0...10)
+            .labelsHidden()
+        }
+    }
+
+    private func debugStatRow(
+        _ icon: String, label: String, value: Int,
+        maxVal: Int = 30, onChange: @escaping (Int) -> Void
+    ) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .frame(width: 16)
+            Text("\(value)")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .frame(width: 20)
+            Stepper("", value: Binding(
+                get: { value },
+                set: { onChange(max(0, min(maxVal, $0))) }
+            ), in: 0...maxVal)
+            .labelsHidden()
         }
     }
 
