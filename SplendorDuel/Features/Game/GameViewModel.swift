@@ -46,6 +46,11 @@ class GameViewModel {
     var tokensToDiscard: Int {
         max(0, currentPlayer.totalTokenCount - 10)
     }
+
+    private var canProcessTurnAction: Bool {
+        !isMultiplayer || isMyTurn
+    }
+    private let audio = AudioManager.shared
     
     // MARK: - Initialization
     init() {
@@ -191,6 +196,7 @@ class GameViewModel {
     // MARK: - Token Actions
     
     func takeTokens(at positions: [(row: Int, col: Int)]) {
+        guard canProcessTurnAction else { return }
         guard isValidTokenSelection(positions) else { return }
         for pos in positions {
             if let token = board.grid[pos.row][pos.col] {
@@ -202,8 +208,10 @@ class GameViewModel {
     }
     
     func handleTokenTap(row: Int, col: Int) {
+        guard canProcessTurnAction else { return }
         if isTakingMatchingToken {
             if let token = board.grid[row][col], token == matchingTokenColor {
+                audio.playSFX(.gemPick)
                 currentPlayer.tokens[token, default: 0] += 1
                 board.grid[row][col] = nil
                 isTakingMatchingToken = false
@@ -215,6 +223,7 @@ class GameViewModel {
         
         if isSelectingGoldToken {
             if let token = board.grid[row][col], token == .gold {
+                audio.playSFX(.gemPick)
                 currentPlayer.tokens[.gold, default: 0] += 1
                 board.grid[row][col] = nil
                 isSelectingGoldToken = false
@@ -225,12 +234,14 @@ class GameViewModel {
         
         if let index = selectedPositions.firstIndex(where: { $0.row == row && $0.col == col }) {
             selectedPositions.remove(at: index)
+            audio.playSFX(.gemDrop)
             return
         }
         
         guard let token = board.grid[row][col], token != .gold else { return }
         guard selectedPositions.count < 3 else { return }
         selectedPositions.append((row, col))
+        audio.playSFX(.gemPick)
     }
     
     func isSelectionValid() -> Bool {
@@ -250,6 +261,7 @@ class GameViewModel {
     }
     
     func confirmTokenSelection() {
+        guard canProcessTurnAction else { return }
         guard isSelectionValid() else { return }
         var takenTokens: [TokenType] = []
         for pos in selectedPositions {
@@ -272,6 +284,7 @@ class GameViewModel {
             }
         }
         selectedPositions.removeAll()
+        audio.playSFX(.gemPick)
         logAction("\(currentPlayer.name) took \(takenTokens.count) token(s).")
         endTurn()
     }
@@ -287,6 +300,7 @@ class GameViewModel {
     }
     
     func usePrivilege() {
+        guard canProcessTurnAction else { return }
         guard canUsePrivilege() else { return }
         let pos = selectedPositions[0]
         if let token = board.grid[pos.row][pos.col] {
@@ -296,6 +310,7 @@ class GameViewModel {
         currentPlayer.privileges -= 1
         availablePrivileges += 1
         selectedPositions.removeAll()
+        audio.playSFX(.privilegeUse)
         logAction("\(currentPlayer.name) used a Privilege Scroll.")
         // FIX 6: Broadcast AFTER usePrivilege so opponent immediately sees the
         // token leave the board. Previously this was called here explicitly but
@@ -317,7 +332,9 @@ class GameViewModel {
     }
     
     func reserveCard(_ card: Card) {
+        guard canProcessTurnAction else { return }
         guard canReserve(card: card) else { return }
+        audio.playSFX(.reserveCard)
         currentPlayer.reservedCards.append(card)
         if let index = tableCardsLevel1.firstIndex(where: { $0.id == card.id }) {
             tableCardsLevel1.remove(at: index)
@@ -332,6 +349,7 @@ class GameViewModel {
     }
     
     func reserveCardFromDeck(level: Int) {
+        guard canProcessTurnAction else { return }
         guard canReserveAny() else { return }
         var drawnCard: Card? = nil
         switch level {
@@ -341,6 +359,7 @@ class GameViewModel {
         default: break
         }
         guard let card = drawnCard else { return }
+        audio.playSFX(.reserveCard)
         currentPlayer.reservedCards.append(card)
         selectedPositions.removeAll()
         isSelectingGoldToken = true
@@ -362,7 +381,9 @@ class GameViewModel {
     }
     
     func purchaseCard(_ card: Card) {
+        guard canProcessTurnAction else { return }
         guard canAfford(card: card) else { return }
+        audio.playSFX(.buyCard)
         for (tokenType, costAmount) in card.cost {
             let playerBonus = currentPlayer.bonuses[tokenType] ?? 0
             var remainingCost = max(0, costAmount - playerBonus)
@@ -422,6 +443,8 @@ class GameViewModel {
     }
     
     func refillBoard() {
+        guard canProcessTurnAction else { return }
+        audio.playSFX(.refill)
         logAction("\(currentPlayer.name) refilled the board.")
         if availablePrivileges > 0 {
             availablePrivileges -= 1
@@ -465,6 +488,7 @@ class GameViewModel {
                 getsAnotherTurn = false
             } else {
                 isPlayer1Turn.toggle()
+                audio.playSFX(.turnChange)
             }
         }
         broadcastGameState()
@@ -473,8 +497,10 @@ class GameViewModel {
     // MARK: - Discard
     
     func discardToken(_ token: TokenType) {
+        guard canProcessTurnAction else { return }
         guard isDiscardingTokens else { return }
         guard let count = currentPlayer.tokens[token], count > 0 else { return }
+        audio.playSFX(.gemDrop)
         currentPlayer.tokens[token]! -= 1
         board.tokenBag.append(token)
         board.tokenBag.shuffle()
@@ -534,8 +560,10 @@ class GameViewModel {
     }
     
     func executeSteal(token: TokenType) {
+        guard canProcessTurnAction else { return }
         guard isStealingToken else { return }
         guard let count = opponent.tokens[token], count > 0 else { return }
+        audio.playSFX(.gemPick)
         opponent.tokens[token]! -= 1
         currentPlayer.tokens[token, default: 0] += 1
         isStealingToken = false
@@ -543,6 +571,7 @@ class GameViewModel {
     }
     
     func selectOverlapColor(color: TokenType) {
+        guard canProcessTurnAction else { return }
         if let index = currentPlayer.purchasedCards.firstIndex(where: { $0.id == pendingOverlapCard?.id }) {
             currentPlayer.purchasedCards[index].bonus = color
         }
@@ -554,7 +583,9 @@ class GameViewModel {
     // MARK: - Royals
     
     func claimRoyal(_ card: RoyalCard) {
+        guard canProcessTurnAction else { return }
         guard isSelectingRoyal else { return }
+        audio.playSFX(.royalAchieve)
         currentPlayer.royalCards.append(card)
         availableRoyals.removeAll { $0.id == card.id }
         isSelectingRoyal = false
@@ -564,10 +595,14 @@ class GameViewModel {
     // MARK: - Win Condition
     
     private func checkWinCondition() {
+        let alreadyHadWinner = winnerName != nil
         if currentPlayer.totalPrestigePoints >= 20 ||
             currentPlayer.totalCrowns >= 10 ||
             currentPlayer.highestPointsInSingleColor >= 10 {
             winnerName = currentPlayer.name
+            if !alreadyHadWinner {
+                audio.playSFX(.gameEnd)
+            }
         }
     }
     

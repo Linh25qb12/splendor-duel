@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var flyAnimator = CardFlyAnimator()
     @State private var showResetConfirmation = false
     @State private var overlayPeeking = false
+    @State private var winnerOverlayHidden = false
     @State private var inspectedCard: Card? = nil
     @State private var isDebugMode = false
     @State private var isDebugCollapsed = true
@@ -135,8 +136,8 @@ struct ContentView: View {
             .scrollContentBackground(.hidden)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .disabled(!viewModel.isMyTurn || hasActiveOverlay)
-        .blur(radius: viewModel.winnerName != nil ? 5 : 0)
+        .disabled(hasActiveOverlay)
+        .blur(radius: (viewModel.winnerName != nil && !winnerOverlayHidden) ? 5 : 0)
     }
 
     // MARK: - Top: Two dashboards side by side
@@ -346,15 +347,19 @@ struct ContentView: View {
                 icon: audio.isBGMPlaying ? "speaker.wave.2.fill" : "speaker.slash.fill",
                 bg: audio.isBGMPlaying ? PastelPalette.accentSage : PastelPalette.neutralMid
             ) {
+                audio.playSFX(.clickButton)
                 audio.toggleBGM()
             }
             labelBtn("Rule", icon: "book.closed.fill", bg: PastelPalette.accentSky) {
+                audio.playSFX(.clickButton)
                 viewModel.isShowingRules = true
             }
             labelBtn("Log", icon: "clock.fill", bg: PastelPalette.lavender) {
+                audio.playSFX(.clickButton)
                 viewModel.isShowingHistory = true
             }
             labelBtn("Reset", icon: "arrow.counterclockwise", bg: PastelPalette.accentRose) {
+                audio.playSFX(.clickButton)
                 showResetConfirmation = true
             }
             .alert("Reset Game?", isPresented: $showResetConfirmation) {
@@ -367,6 +372,7 @@ struct ContentView: View {
                 "Debug", icon: "ladybug.fill",
                 bg: isDebugMode ? .orange : .gray
             ) {
+                audio.playSFX(.clickButton)
                 withAnimation(.spring(response: 0.3)) { isDebugMode.toggle() }
             }
             .disabled(viewModel.isMultiplayer)
@@ -551,19 +557,34 @@ struct ContentView: View {
     private var overlays: some View {
         Group {
             if let winner = viewModel.winnerName {
-                VStack(spacing: 20) {
-                    Label("Game Over!", systemImage: "party.popper.fill")
-                        .font(.largeTitle)
-                        .fontWeight(.heavy)
-                    Text("\(winner) Wins!").font(.title).foregroundColor(PastelPalette.success)
-                    Button("Play Again") { onReset() }
-                        .font(.headline).padding().background(PastelPalette.info).foregroundColor(PastelPalette.textOnDark).cornerRadius(10)
+                if winnerOverlayHidden {
+                    winnerResumeButton
+                } else {
+                    VStack(spacing: 20) {
+                        HStack {
+                            Spacer()
+                            Button(action: { withAnimation { winnerOverlayHidden = true } }) {
+                                Label("View Board", systemImage: "eye")
+                                    .font(.caption).bold()
+                                    .foregroundStyle(PastelPalette.buttonLabelOnPastel)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(PastelPalette.neutralSoft, in: Capsule())
+                            }
+                        }
+                        Label("Game Over!", systemImage: "party.popper.fill")
+                            .font(.largeTitle)
+                            .fontWeight(.heavy)
+                        Text("\(winner) Wins!").font(.title).foregroundColor(PastelPalette.success)
+                        Button("Play Again") { onReset() }
+                            .font(.headline).padding().background(PastelPalette.info).foregroundColor(PastelPalette.textOnDark).cornerRadius(10)
+                    }
+                    .padding(30)
+                    .background(PastelPalette.cream)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .shadow(color: PastelPalette.cardShadow, radius: CardChrome.shadowRadius, x: 0, y: CardChrome.shadowY)
+                    .overlayCard()
                 }
-                .padding(40)
-                .background(PastelPalette.cream)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: PastelPalette.cardShadow, radius: CardChrome.shadowRadius, x: 0, y: CardChrome.shadowY)
-                .overlayCard()
             }
 
             if hasActiveOverlay && !overlayPeeking {
@@ -578,13 +599,30 @@ struct ContentView: View {
             }
 
             if viewModel.isMultiplayer && !viewModel.isMyTurn {
-                ZStack {
-                    PastelPalette.overlayDark.ignoresSafeArea()
-                    VStack {
-                        ProgressView().scaleEffect(2).padding(.bottom)
-                        Text("Waiting for opponent...").font(.title).bold().foregroundColor(PastelPalette.textOnDark)
+                VStack {
+                    Spacer()
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .tint(.white)
+                        Text("Waiting for opponent turn...")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(PastelPalette.overlayDark.opacity(0.9))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(PastelPalette.cardStroke.opacity(0.55), lineWidth: 1)
+                    )
+                    .padding(.bottom, 16)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .allowsHitTesting(false)
+                .transition(.opacity)
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.isDiscardingTokens)
@@ -592,10 +630,34 @@ struct ContentView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.isSelectingRoyal)
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.isSelectingOverlapColor)
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.winnerName != nil)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: winnerOverlayHidden)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: overlayPeeking)
         .onChange(of: hasActiveOverlay) { _, active in
             if !active { overlayPeeking = false }
         }
+        .onChange(of: viewModel.winnerName) { _, winner in
+            if winner == nil {
+                winnerOverlayHidden = false
+            }
+        }
+    }
+
+    private var winnerResumeButton: some View {
+        VStack {
+            Spacer()
+            Button(action: { withAnimation { winnerOverlayHidden = false } }) {
+                Label("Show Result", systemImage: "trophy.fill")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(PastelPalette.success, in: Capsule())
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private var peekResumeButton: some View {
@@ -861,22 +923,39 @@ struct OverlayCardModifier: ViewModifier {
 struct AppRootView: View {
     @State private var viewModel = GameViewModel()
     @State private var isGameStarted: Bool = false
+    @State private var hasHandledDisconnect = false
 
     var body: some View {
-        if isGameStarted {
-            ContentView(viewModel: viewModel) {
-                // FIX: Cleanly disconnect before wiping the ViewModel
-                viewModel.prepareForReset()
-                viewModel = GameViewModel()
-                isGameStarted = false
-            }
-        } else {
-            LobbyView(viewModel: viewModel) {
-                withAnimation {
-                    isGameStarted = true
+        Group {
+            if isGameStarted {
+                ContentView(viewModel: viewModel) {
+                    resetToLobby()
+                }
+            } else {
+                LobbyView(viewModel: viewModel) {
+                    withAnimation {
+                        hasHandledDisconnect = false
+                        isGameStarted = true
+                    }
                 }
             }
         }
+        .onChange(of: viewModel.multipeerManager.isConnected) { _, isConnected in
+            guard isGameStarted, viewModel.isMultiplayer else { return }
+            if isConnected {
+                hasHandledDisconnect = false
+                return
+            }
+            guard !hasHandledDisconnect else { return }
+            resetToLobby()
+        }
+    }
+
+    private func resetToLobby() {
+        hasHandledDisconnect = true
+        viewModel.prepareForReset()
+        viewModel = GameViewModel()
+        isGameStarted = false
     }
 }
 
